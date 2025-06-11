@@ -8,6 +8,6 @@ class MainController {
 
     @GetMapping("/")
     fun main(): String {
-        return "Universitatea Tehnica"
+        return "Universitatea Tehnica a Moldovei"
     }
 }
