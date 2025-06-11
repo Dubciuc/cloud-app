@@ -8,6 +8,9 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      IMAGE_NAME: dubciuc/cloud-app
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -30,15 +33,18 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Set unique image tag
+        id: vars
+        run: echo "TAG=${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64
           push: true
-          tags: dubciuc/cloud-app:latest
-
-      # === KUBERNETES DEPLOY ===
+          no-cache: true
+          tags: ${{ env.TAG }}
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v3
@@ -57,12 +63,7 @@ jobs:
           location: europe-west1-b
           project_id: reflecting-ivy-459300-s2
 
-      - name: Deploy to Kubernetes
+      - name: Deploy updated image to Kubernetes
         run: |
-          kubectl apply -f deployment.yaml
-
-      - name: Force rollout restart
-        run: |
-          kubectl rollout restart deployment/cloud-app
+          kubectl set image deployment/cloud-app cloud-app=${{ env.TAG }} --record
           kubectl rollout status deployment/cloud-app
-
