@@ -55,7 +55,7 @@ jobs:
         with:
           cluster_name: cloud-app-cluster
           location: europe-west1-b
-          project_id: cloud-app-project-459300
+          project_id: reflecting-ivy-459300-s2
 
       - name: Deploy to Kubernetes
         run: |
