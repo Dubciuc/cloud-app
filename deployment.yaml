@@ -21,8 +21,8 @@ spec:
     spec:
       containers:
         - name: cloud-app
+          image: dubciuc/cloud-app:placeholder
           imagePullPolicy: Always
-          image: dubciuc/cloud-app:latest
           ports:
             - containerPort: 8080
           resources:
