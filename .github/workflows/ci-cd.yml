@@ -4,12 +4,12 @@ on:
   push:
     branches: [ "main" ]
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+env:
+  IMAGE_NAME: dubciuc/cloud-app
 
-    env:
-      IMAGE_NAME: dubciuc/cloud-app
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -34,8 +34,8 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Set unique image tag
-        id: tag
-        run: echo "TAG=${{ env.IMAGE_NAME }}:${GITHUB_SHA}" >> $GITHUB_ENV
+        id: vars
+        run: echo "TAG=${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -46,7 +46,16 @@ jobs:
           no-cache: true
           tags: ${{ env.TAG }}
 
-      # === KUBERNETES DEPLOY ===
+    outputs:
+      image_tag: ${{ env.TAG }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v3
@@ -65,12 +74,7 @@ jobs:
           location: europe-west1-b
           project_id: reflecting-ivy-459300-s2
 
-      - name: Update deployment image (rolling update, no downtime)
+      - name: Deploy updated image to Kubernetes
         run: |
-          kubectl set image deployment/cloud-app cloud-app=${{ env.TAG }} --record
-          kubectl rollout status deployment/cloud-app --timeout=120s
-
-      - name: Print external IP
-        run: |
-          echo "External IP:"
-          kubectl get svc cloud-app-service -o=jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo "Waiting for external IP..."
+          kubectl set image deployment/cloud-app cloud-app=${{ needs.build.outputs.image_tag }} --record
+          kubectl rollout status deployment/cloud-app
